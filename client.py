@@ -1,8 +1,12 @@
 import time
 from random import choice
+from threading import Lock
+from contextlib import contextmanager
 
 from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
+
+lock = Lock()
 
 
 class ClientConnectionPool:
@@ -57,14 +61,15 @@ class ClientConnectionPool:
         随机获取一个连接对象
         :return:
         """
-        ready_rand = []
-        for conn in self.pool:
-            if conn.state in ("READY", "IDLE"):
-                ready_rand.append(conn)
+        with lock:
+            ready_rand = []
+            for conn in self.pool:
+                if conn.state in ("READY", "IDLE"):
+                    ready_rand.append(conn)
 
-        if not ready_rand:
-            raise BlockingIOError("All connection are busy")
-        return choice(ready_rand)
+            if not ready_rand:
+                raise BlockingIOError("All connection are busy")
+            return choice(ready_rand)
 
     def get_connection_state(self, conn_id):
         """
@@ -106,7 +111,7 @@ class ExtendChannel(object):
     """
     普通的channel回调中没有连接对象参数，所以把callback加到Channel上以区分
     """
-    extra_state = ['INITIALIZING', "DEPRECATED"]
+    extra_state = ['INITIALIZING', "DEPRECATED", "BUSY"]
 
     def __init__(self, connect_id, host, port, callback_handler, intercept):
         """
@@ -160,6 +165,7 @@ class ExtendChannel(object):
         :return:
         """
         self._channel.close()
+        self._state = "DEPRECATED"
 
     @property
     def state(self):
@@ -188,7 +194,25 @@ class ExtendChannel(object):
         """
         state = args[0]
         if self.callback_handler:
-            return self.callback_handler.dispatch(self, state)
+            with lock:
+                return self.callback_handler.dispatch(self, state)
+
+    def _busy(self):
+        with lock:
+            self._state = "BUSY"
+
+    def _free(self):
+        with lock:
+            self._state = "IDLE"
+
+    @contextmanager
+    def use(self):
+        self._busy()
+        yield
+        self._free()
+
+    def __getattr__(self, item):
+        return getattr(self._channel, item, None)
 
 
 class DefaultCallBackHandler(object):
