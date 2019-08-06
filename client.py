@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
 
-from callback_handler import DefaultCallBackHandler
+from .callback_handler import DefaultCallBackHandler
 
 lock = Lock()
 
@@ -31,8 +31,8 @@ class ClientConnectionPool:
         self.pool_size = pool_size
         self.intercept = intercept
         self.reconnect_loop_time = kwargs.pop("reconnect_loop_time", 5)
-        if self.callback_handler is not None:
-            self.callback_handler = self.callback_handler()
+        # if self.callback_handler is not None:
+        #     self.callback_handler = self.callback_handler()
 
         # 初始化连接池
         self._init_pool()
@@ -127,11 +127,11 @@ class ExtendChannel(object):
         :param intercept: 头部拦截器
         """
         self.connect_id = connect_id
-        self.callback_handler = callback_handler
         self.intercept = intercept
         self.host = host
         self.port = port
         self._channel = self.connect()
+        self.callback_handler = callback_handler(self._channel)
         self.reconnect_loop_time = reconnect_loop_time
         if not self._channel:
             self.reconnect()
