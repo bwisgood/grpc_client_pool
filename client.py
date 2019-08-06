@@ -113,7 +113,7 @@ class ClientConnectionPool:
     def get_all_channel_state(self):
         d = {}
         for channel in self.pool:
-            d[channel.channel_id] = channel.state
+            d[channel.connect_id] = channel.state
         return d
 
 
