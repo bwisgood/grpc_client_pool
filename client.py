@@ -110,6 +110,12 @@ class ClientConnectionPool:
         """
         self._init_pool()
 
+    def get_all_channel_state(self):
+        d = {}
+        for channel in self.pool:
+            d[channel.channel_id] = channel.state
+        return d
+
 
 class ExtendChannel(object):
     """
