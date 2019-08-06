@@ -15,7 +15,7 @@ class ClientConnectionPool:
     """
     callback_handler = None
 
-    def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None):
+    def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, **kwargs):
         """
         初始化连接池对象
         :param host: ip
@@ -28,6 +28,7 @@ class ClientConnectionPool:
         self.port = port
         self.pool_size = pool_size
         self.intercept = intercept
+        self.reconnect_loop_time = kwargs.pop("reconnect_loop_time", 5)
         if self.callback_handler is not None:
             self.callback_handler = self.callback_handler()
 
@@ -113,7 +114,7 @@ class ExtendChannel(object):
     """
     extra_state = ['INITIALIZING', "DEPRECATED", "BUSY"]
 
-    def __init__(self, connect_id, host, port, callback_handler, intercept):
+    def __init__(self, connect_id, host, port, callback_handler, intercept, reconnect_loop_time):
         """
         初始化
         :param connect_id: 连接id
@@ -128,6 +129,7 @@ class ExtendChannel(object):
         self.host = host
         self.port = port
         self._channel = self.connect()
+        self.reconnect_loop_time = reconnect_loop_time
         if not self._channel:
             self.reconnect()
         self._channel.subscribe(self.callback)
@@ -139,7 +141,7 @@ class ExtendChannel(object):
         :return:
         """
         while True:
-            time.sleep(30)
+            time.sleep(self.reconnect_loop_time)
             try:
                 self._channel = self.connect()
             except:
@@ -233,6 +235,7 @@ class DefaultCallBackHandler(object):
 
     def shut_down(self, channel):
         channel.state = "SHUTDOWN"
+        channel.reconnect()
         print("server error with shutdown")
 
     def connecting(self, channel):
@@ -245,6 +248,7 @@ class DefaultCallBackHandler(object):
 
     def transient_failure(self, channel):
         channel.state = "TRANSIENT_FAILURE"
+        channel.reconnect()
         print("someting wrong with this channel")
 
     def idle(self, channel):
