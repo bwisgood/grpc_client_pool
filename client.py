@@ -42,7 +42,8 @@ class ClientConnectionPool:
         """
         self.pool = set()
         for size in range(self.pool_size):
-            channel = ExtendChannel(size, self.host, self.port, self.callback_handler, self.intercept)
+            channel = ExtendChannel(size, self.host, self.port, self.callback_handler, self.intercept,
+                                    self.reconnect_loop_time)
 
             self.pool.add(channel)
 
