@@ -116,3 +116,4 @@ dmypy.json
 .idea/
 
 p_test.py
+c.sh
