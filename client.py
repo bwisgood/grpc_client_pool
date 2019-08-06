@@ -6,6 +6,8 @@ from contextlib import contextmanager
 from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
 
+from callback_handler import DefaultCallBackHandler
+
 lock = Lock()
 
 
@@ -13,7 +15,7 @@ class ClientConnectionPool:
     """
     客户端连接池
     """
-    callback_handler = None
+    callback_handler = DefaultCallBackHandler
 
     def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, **kwargs):
         """
@@ -216,42 +218,3 @@ class ExtendChannel(object):
 
     def __getattr__(self, item):
         return getattr(self._channel, item, None)
-
-
-class DefaultCallBackHandler(object):
-    def __init__(self, channel):
-        self.channel = channel
-
-    def dispatch(self, channel, state):
-        if state == ChannelConnectivity.TRANSIENT_FAILURE:
-            return self.transient_failure(channel)
-        elif state == ChannelConnectivity.SHUTDOWN:
-            return self.shut_down(channel)
-        elif state == ChannelConnectivity.CONNECTING:
-            return self.connecting(channel)
-        elif state == ChannelConnectivity.READY:
-            return self.ready(channel)
-        elif state == ChannelConnectivity.IDLE:
-            return self.idle(channel)
-
-    def shut_down(self, channel):
-        channel.state = "SHUTDOWN"
-        channel.reconnect()
-        print("server error with shutdown")
-
-    def connecting(self, channel):
-        channel.state = "CONNECTING"
-        print("I am trying to connect server")
-
-    def ready(self, channel):
-        channel.state = "READY"
-        print("I am ready to send a request")
-
-    def transient_failure(self, channel):
-        channel.state = "TRANSIENT_FAILURE"
-        channel.reconnect()
-        print("someting wrong with this channel")
-
-    def idle(self, channel):
-        channel.state = "IDLE"
-        print("waiting")
