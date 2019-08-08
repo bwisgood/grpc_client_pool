@@ -117,6 +117,16 @@ class ClientConnectionPool:
             d[channel.connect_id] = channel.state
         return d
 
+    def get_stub(self, stub_cls):
+        """
+        封装获取客户端存根方法，不用每次都去get一个conn再去创建
+        :param stub_cls:
+        :return:
+        """
+        conn = self.get_one_connection()
+        stub = stub_cls(conn)
+        return stub
+
 
 class ExtendChannel(object):
     """
