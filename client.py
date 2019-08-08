@@ -16,6 +16,7 @@ class ClientConnectionPool:
     客户端连接池
     """
     callback_handler = DefaultCallBackHandler
+    error_handler = None
 
     def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, **kwargs):
         """
