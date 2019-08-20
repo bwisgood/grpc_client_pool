@@ -4,9 +4,9 @@ from manager import Manager
 
 pool = ClientConnectionPool(stub_cls=CompanyServerStub)
 
-manager = Manager()
-manager.register(pool)
-
+manager = Manager(config="config.yaml")
+print(manager.methods)
+print(manager.pools)
 from google.protobuf.empty_pb2 import Empty
 
 for i in range(10):

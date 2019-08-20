@@ -12,9 +12,9 @@ manager:
           9101
         weight:
           2
-    stub: "protogen.CompanyServerStub"
+    stub: "protogen.company_pb2_grpc.CompanyServerStub"
     size: 3
-    intercepter: ""
+    intercept: ""
 
   - servers:
       - host:
@@ -29,7 +29,7 @@ manager:
           9101
         weight:
           2
-    stub: "protogen.CompanyServerStub"
+    stub: "protogen.company_pb2_grpc.CompanyServerStub"
     size: 3
-    intercepter: ""
+    intercept: ""
 

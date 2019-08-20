@@ -24,8 +24,11 @@ usage:
     SingleMode
 """
 import threading
+import importlib
 
 import yaml
+
+from client import ClientConnectionPool
 
 
 class Manager(object):
@@ -33,7 +36,7 @@ class Manager(object):
     _instance = None
 
     methods = {}
-    pools = {}
+    pools = set()
 
     def __new__(cls, *args, **kwargs):
         if not getattr(Manager, "_instance"):
@@ -43,7 +46,46 @@ class Manager(object):
         return Manager._instance
 
     def __init__(self, config=None, *args, **kwargs):
-        pass
+
+        if config:
+            with open(config) as cfg:
+                data = yaml.full_load(cfg)
+
+            manager = data.get("manager")
+
+            for pool in manager:
+                hosts = []
+                ports = []
+                weight = []
+                size = 3
+                stub = None
+                intercept = None
+                for k, v in pool.items():
+                    if k == "host":
+                        hosts.append(v)
+                    elif k == "port":
+                        ports.append(v)
+                    elif k == "weight":
+                        weight.append(v)
+                    elif k == "size":
+                        size = v
+                    elif k == "stub":
+                        if v:
+                            module_path, class_name = v.rsplit('.', 1)
+
+                            modle = importlib.import_module(module_path)
+                            meth = getattr(modle, class_name)
+                            stub = meth
+                    elif k == "intercept":
+
+                        if v:
+                            module_path, class_name = v.rsplit('.', 1)
+
+                            modle = importlib.import_module(module_path)
+                            meth = getattr(modle, class_name)
+                            intercept = meth
+                p = ClientConnectionPool(hosts=hosts, ports=ports, pool_size=size, stub_cls=stub, intercept=intercept)
+                self.register(p)
 
     def register(self, *args):
         """
@@ -52,6 +94,7 @@ class Manager(object):
         :return:
         """
         for pool in args:
+            self.pools.add(pool)
             self._collect_methods(pool)
 
     def _collect_methods(self, pool):
