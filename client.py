@@ -1,5 +1,5 @@
 import time
-from random import choice, randint
+from random import randint
 from threading import Lock
 from contextlib import contextmanager
 

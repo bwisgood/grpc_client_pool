@@ -1,28 +1,3 @@
-"""
-client pool manager
-
-previous:
-
-    pool = ClientConnectionPool
-    pool.stub.GRPCInterface(Company=company)
-
-    client 内部需要维护一个方法集
-
-usage:
-    manager = Manager
-
-    manager.register(pool)
-
-
-    将方法集合传递给manager即可实现
-    manager.GRPCInterface(Company)
-
-    @send
-    send(GRPCInterface, Company, *args)
-
-
-    SingleMode
-"""
 import threading
 import importlib
 
@@ -108,7 +83,6 @@ class Manager(object):
     def __getattr__(self, item):
         if item in self.methods:
             method = getattr(self.methods[item], item, None)
-            # print(self.methods[item].methods)
             if not method:
                 raise AttributeError("[%s] not defined in %s" % (item, self.__class__))
             return method
