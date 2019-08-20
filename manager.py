@@ -25,6 +25,8 @@ usage:
 """
 import threading
 
+import yaml
+
 
 class Manager(object):
     _instance_lock = threading.Lock()
@@ -41,8 +43,6 @@ class Manager(object):
         return Manager._instance
 
     def __init__(self, config=None, *args, **kwargs):
-        # if config:
-        #     with open(config) as cfg:
         pass
 
     def register(self, *args):
@@ -59,10 +59,15 @@ class Manager(object):
         注册所有连接池的方法
         :return:
         """
-        self.methods.update(**pool.methods)
+        for method in pool.methods:
+            self.methods[method] = pool
 
     def __getattr__(self, item):
         if item in self.methods:
-            return self.methods[item]
+            method = getattr(self.methods[item], item, None)
+            # print(self.methods[item].methods)
+            if not method:
+                raise AttributeError("[%s] not defined in %s" % (item, self.__class__))
+            return method
         else:
             raise AttributeError("[%s] not defined in %s" % (item, self.__class__))

@@ -1,0 +1,35 @@
+manager:
+  - servers:
+      - host:
+          "127.0.0.1"
+        port:
+          9100
+        weight:
+          1
+      - host:
+          "127.0.0.1"
+        port:
+          9101
+        weight:
+          2
+    stub: "protogen.CompanyServerStub"
+    size: 3
+    intercepter: ""
+
+  - servers:
+      - host:
+          "127.0.0.1"
+        port:
+          9100
+        weight:
+          1
+      - host:
+          "127.0.0.1"
+        port:
+          9101
+        weight:
+          2
+    stub: "protogen.CompanyServerStub"
+    size: 3
+    intercepter: ""
+

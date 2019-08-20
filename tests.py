@@ -9,5 +9,6 @@ manager.register(pool)
 
 from google.protobuf.empty_pb2 import Empty
 
-r = manager.GetAllCompany(Empty())
-print(r)
+for i in range(10):
+    r = manager.GetAllCompany(Empty())
+    # print(r)

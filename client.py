@@ -7,6 +7,7 @@ from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
 
 from callback_handler import DefaultCallBackHandler
+from utils import weight_random
 
 lock = Lock()
 
@@ -24,9 +25,9 @@ class ClientConnectionPool:
     callback_handler = DefaultCallBackHandler
     error_handler = None
 
-    methods = {}
+    methods = set()
 
-    def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, stub_cls=None, **kwargs):
+    def __init__(self, host="localhost", port=9100, pool_size=5, weights=None, intercept=None, stub_cls=None, **kwargs):
         """
         初始化连接池对象
         :param host: ip
@@ -44,6 +45,9 @@ class ClientConnectionPool:
             self.distribute_mode = True
         else:
             self.distribute_mode = False
+
+        if not weights:
+            self.weights = [1 for _ in range(len(self.hosts))]
 
         self.pool_size = pool_size
         self.intercept = intercept
@@ -68,8 +72,9 @@ class ClientConnectionPool:
             n = randint(0, len(self.hosts) - 1)
             host = self.hosts[n]
             port = self.ports[n]
+            weight = self.weights[n]
             channel = ExtendChannel(self, size, host, port, self.callback_handler, self.intercept,
-                                    self.reconnect_loop_time, self.stub_cls)
+                                    self.reconnect_loop_time, self.stub_cls, weight=weight)
 
             self.pool.add(channel)
 
@@ -97,7 +102,7 @@ class ClientConnectionPool:
 
             if not ready_rand:
                 raise BlockingIOError("All connection are busy")
-            return choice(ready_rand)
+            return weight_random(self.pool, key="weight")
 
     def get_connection_state(self, conn_id):
         """
@@ -152,7 +157,14 @@ class ClientConnectionPool:
 
     def __getattr__(self, item):
         if item in self.methods:
-            return self.methods[item]
+            # return self.methods[item]
+            # 获取一个channel
+            # 使用这个channel的stub去发送请求
+            c = self.get_one_connection()
+            method = getattr(c.stub, item, None)
+            if not method:
+                raise AttributeError("[%s] not defined in %s" % (item, self.__class__))
+            return method
         else:
             raise AttributeError("[%s] not defined in %s" % (item, self.__class__))
 
@@ -163,7 +175,8 @@ class ExtendChannel(object):
     """
     extra_state = ['INITIALIZING', "DEPRECATED", "BUSY"]
 
-    def __init__(self, pool, connect_id, host, port, callback_handler, intercept, reconnect_loop_time, stub_cls=None):
+    def __init__(self, pool, connect_id, host, port, callback_handler, intercept, reconnect_loop_time, stub_cls=None,
+                 **kwargs):
         """
         初始化
         :param connect_id: 连接id
@@ -188,7 +201,9 @@ class ExtendChannel(object):
         self._state = "IDLE"
 
         if stub_cls:
-            self._stub = self.init_stub(stub_cls)
+            self.stub = self.init_stub(stub_cls)
+
+        self._weight = kwargs.pop("weight", 1)
 
     def reconnect(self):
         """
@@ -244,6 +259,14 @@ class ExtendChannel(object):
             raise ValueError("Value Name Must in ChannelConnectivity")
         self._state = value
 
+    @property
+    def weight(self):
+        return self._weight
+
+    @weight.setter
+    def weight(self, val):
+        self._weight = val
+
     def callback(self, *args, **kwargs):
         """
         回调
@@ -276,7 +299,8 @@ class ExtendChannel(object):
     def notify(self, stub_instance):
         if self.pool:
             for k, v in stub_instance.__dict__.items():
-                self.pool.methods[k] = v
+                if not k.startswith("__"):
+                    self.pool.methods.add(k)
 
     def __getattr__(self, item):
         return getattr(self._channel, item, None)
