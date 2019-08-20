@@ -1,12 +1,12 @@
 import time
-from random import choice
+from random import choice, randint
 from threading import Lock
 from contextlib import contextmanager
 
 from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
 
-from .callback_handler import DefaultCallBackHandler
+from callback_handler import DefaultCallBackHandler
 
 lock = Lock()
 
@@ -15,10 +15,18 @@ class ClientConnectionPool:
     """
     客户端连接池
     """
+
+    _STATUS_OK = 0
+    _STATUS_WARNING = 1
+    _STATUS_ERROR = 2
+    _STATUS_SHUTDOWN = 3
+
     callback_handler = DefaultCallBackHandler
     error_handler = None
 
-    def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, **kwargs):
+    methods = {}
+
+    def __init__(self, host="localhost", port=9100, pool_size=5, intercept=None, stub_cls=None, **kwargs):
         """
         初始化连接池对象
         :param host: ip
@@ -27,16 +35,27 @@ class ClientConnectionPool:
         :param intercept: 头部拦截器
         """
         self.pool = []
-        self.host = host
-        self.port = port
+        self.hosts = host if isinstance(host, list) else [host, ]
+        self.ports = port if isinstance(port, list) else [port, ]
+        if len(self.hosts) != len(self.ports):
+            raise Exception("length of host[%d] must equal length of port[%d]" % (len(self.hosts), len(self.ports)))
+
+        if len(self.hosts) > 1:
+            self.distribute_mode = True
+        else:
+            self.distribute_mode = False
+
         self.pool_size = pool_size
         self.intercept = intercept
         self.reconnect_loop_time = kwargs.pop("reconnect_loop_time", 5)
         # if self.callback_handler is not None:
         #     self.callback_handler = self.callback_handler()
 
+        if stub_cls:
+            self.stub_cls = stub_cls
         # 初始化连接池
         self._init_pool()
+        self.status = self._STATUS_OK
 
     def _init_pool(self):
         """
@@ -44,9 +63,13 @@ class ClientConnectionPool:
         :return:
         """
         self.pool = set()
+
         for size in range(self.pool_size):
-            channel = ExtendChannel(size, self.host, self.port, self.callback_handler, self.intercept,
-                                    self.reconnect_loop_time)
+            n = randint(0, len(self.hosts) - 1)
+            host = self.hosts[n]
+            port = self.ports[n]
+            channel = ExtendChannel(self, size, host, port, self.callback_handler, self.intercept,
+                                    self.reconnect_loop_time, self.stub_cls)
 
             self.pool.add(channel)
 
@@ -127,6 +150,12 @@ class ClientConnectionPool:
         stub = stub_cls(conn)
         return stub
 
+    def __getattr__(self, item):
+        if item in self.methods:
+            return self.methods[item]
+        else:
+            raise AttributeError("[%s] not defined in %s" % (item, self.__class__))
+
 
 class ExtendChannel(object):
     """
@@ -134,7 +163,7 @@ class ExtendChannel(object):
     """
     extra_state = ['INITIALIZING', "DEPRECATED", "BUSY"]
 
-    def __init__(self, connect_id, host, port, callback_handler, intercept, reconnect_loop_time):
+    def __init__(self, pool, connect_id, host, port, callback_handler, intercept, reconnect_loop_time, stub_cls=None):
         """
         初始化
         :param connect_id: 连接id
@@ -143,6 +172,9 @@ class ExtendChannel(object):
         :param callback_handler: 回调handler
         :param intercept: 头部拦截器
         """
+        if pool:
+            self.pool = pool
+
         self.connect_id = connect_id
         self.intercept = intercept
         self.host = host
@@ -154,6 +186,9 @@ class ExtendChannel(object):
             self.reconnect()
         self._channel.subscribe(self.callback)
         self._state = "IDLE"
+
+        if stub_cls:
+            self._stub = self.init_stub(stub_cls)
 
     def reconnect(self):
         """
@@ -232,6 +267,16 @@ class ExtendChannel(object):
         self._busy()
         yield
         self._free()
+
+    def init_stub(self, stub_cls):
+        temp = stub_cls(self._channel)
+        self.notify(temp)
+        return temp
+
+    def notify(self, stub_instance):
+        if self.pool:
+            for k, v in stub_instance.__dict__.items():
+                self.pool.methods[k] = v
 
     def __getattr__(self, item):
         return getattr(self._channel, item, None)
