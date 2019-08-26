@@ -6,8 +6,8 @@ from contextlib import contextmanager
 from grpc import insecure_channel, intercept_channel
 from grpc import ChannelConnectivity
 
-from callback_handler import DefaultCallBackHandler
-from utils import weight_random
+from .callback_handler import DefaultCallBackHandler
+from .utils import weight_random
 
 lock = Lock()
 

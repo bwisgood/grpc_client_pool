@@ -3,7 +3,7 @@ import importlib
 
 import yaml
 
-from client import ClientConnectionPool
+from .client import ClientConnectionPool
 
 
 class Manager(object):
