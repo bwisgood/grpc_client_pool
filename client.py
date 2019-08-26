@@ -55,8 +55,7 @@ class ClientConnectionPool:
         # if self.callback_handler is not None:
         #     self.callback_handler = self.callback_handler()
 
-        if stub_cls:
-            self.stub_cls = stub_cls
+        self.stub_cls = stub_cls
         # 初始化连接池
         self._init_pool()
         self.status = self._STATUS_OK
