@@ -25,8 +25,6 @@ class ClientConnectionPool:
     callback_handler = DefaultCallBackHandler
     error_handler = None
 
-    methods = set()
-
     def __init__(self, host="localhost", port=9100, pool_size=5, weights=None, intercept=None, stub_cls=None, **kwargs):
         """
         初始化连接池对象
@@ -35,6 +33,7 @@ class ClientConnectionPool:
         :param pool_size: pool大小
         :param intercept: 头部拦截器
         """
+        self.methods = set()
         self.pool = []
         self.hosts = host if isinstance(host, list) else [host, ]
         self.ports = port if isinstance(port, list) else [port, ]
