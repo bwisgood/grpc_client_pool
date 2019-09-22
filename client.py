@@ -71,8 +71,10 @@ class ClientConnectionPool:
             host = self.hosts[n]
             port = self.ports[n]
             weight = self.weights[n]
-            channel = ExtendChannel(self, size, host, port, self.callback_handler, self.intercept,
+
+            channel = ExtendChannel(self, ExtendChannel.connect_id, host, port, self.callback_handler, self.intercept,
                                     self.reconnect_loop_time, self.stub_cls, weight=weight)
+            ExtendChannel.connect_id += 1
 
             self.pool.add(channel)
 
@@ -172,6 +174,8 @@ class ExtendChannel(object):
     普通的channel回调中没有连接对象参数，所以把callback加到Channel上以区分
     """
     extra_state = ['INITIALIZING', "DEPRECATED", "BUSY"]
+
+    connect_id = 0
 
     def __init__(self, pool, connect_id, host, port, callback_handler, intercept, reconnect_loop_time, stub_cls=None,
                  **kwargs):
