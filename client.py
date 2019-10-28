@@ -228,7 +228,10 @@ class ExtendChannel(object):
         连接
         :return:
         """
-        channel = insecure_channel("{}:{}".format(self.host, self.port))
+        MB = 1024 * 1024
+        GRPC_CHANNEL_OPTIONS = [('grpc.max_message_length', 64 * MB), ('grpc.max_receive_message_length', 64 * MB)]
+
+        channel = insecure_channel("{}:{}".format(self.host, self.port), options=GRPC_CHANNEL_OPTIONS)
         if not self.intercept:
             return channel
         return intercept_channel(channel, self.intercept)
