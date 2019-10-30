@@ -204,6 +204,7 @@ class ExtendChannel(object):
 
         if stub_cls:
             self.stub = self.init_stub(stub_cls)
+            self.connect_id = str(self.connect_id) + ":" + stub_cls.__name__
 
         self._weight = kwargs.pop("weight", 1)
 
