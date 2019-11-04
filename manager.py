@@ -36,6 +36,14 @@ class Manager(object):
                 stub = None
                 intercept = None
                 for k, v in pool.items():
+                    if k == "servers":
+                        for server in v:
+                            host = server.get("host")
+                            hosts.append(host)
+                            port = server.get("port")
+                            ports.append(port)
+                            weight_ = server.get("weight")
+                            weight.append(weight_)
                     if k == "host":
                         hosts.append(v)
                     elif k == "port":
@@ -59,7 +67,7 @@ class Manager(object):
                             modle = importlib.import_module(module_path)
                             meth = getattr(modle, class_name)
                             intercept = meth
-                p = ClientConnectionPool(hosts=hosts, ports=ports, pool_size=size, stub_cls=stub, intercept=intercept)
+                p = ClientConnectionPool(host=hosts, port=ports, pool_size=size, stub_cls=stub, intercept=intercept)
                 self.register(p)
 
     def register(self, *args):
