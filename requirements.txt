@@ -1,5 +1,5 @@
 grpcio==1.22.0
 grpcio-tools==1.22.0
-protobuf==3.9.0
+protobuf==3.18.3
 PyYAML==5.4
 six==1.12.0
